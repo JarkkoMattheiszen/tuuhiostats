@@ -2,26 +2,63 @@
 # -*- coding: utf-8 -*-
 
 # Tuuhiostats downloads PUBG season statistics for a range of 1-10 players, parses and sorts them and
-# outputs them to individuals files to be used with Nightbot's urlfetch function
+# outputs them to individuals files to be used with Nightbot's urlfetch function. Written for Python 2.7.
 #
 # Use !commands add !command $(urlfetch https://yourserver/path/file) with Nightbot
 #
-# Copyright (C) ja sen semmoset 2022 BaronVonKale. Terveisiä kotiin!
+# Copyright (C) ja sen semmoset 2022 BVK. Terveisiä kotiin!
 
 from __future__ import print_function
 import json
 import sys
 import requests
 from requests.structures import CaseInsensitiveDict
+from datetime import datetime
 
-# Download the stats as JSON, replace with the URL and headers you get PUBG Developer Portal
-# Change platform shard, season, gamemode, player ID's, and if needed gamepad filter
-url = 'https://api.pubg.com/shards/steam/seasons/division.bro.official.pc-2018-19/gameMode/squad-fpp/players?filter[playerIds]=PLAYER_ACCOUNT_IDS_HERE&filter[gamepad]=false'
+# This is the stuff you need to fill up: your API key, working directory and the players to be included (10 players maximum. This is a PUBG API limitation. )
+authorizationKey = ''
+workingDirectory = ''
+playerNames = ['BaronVonKale', 'MrSys0p', 'Diizzel', 'Dertti', 'Madfexx', 'Wubsi', 'jezpexx', 'mehumi3s', 'Topsu', 'Rikama']
+numberOfPlayers = len(playerNames)
 
-# Authorization data for the PUBG server, swap the authorization key with your PUBG Developer API key
+# Form the URL to get player ID's from PUBG API
+urlNames = ''
+
+x = 0
+for i in range(numberOfPlayers):
+    if x < (numberOfPlayers - 1):
+        urlNames += playerNames[i] + '%2C'
+        x += 1
+    else:
+        urlNames += playerNames[i]
+        x += 1
+
+# Get the player ID's from PUBG server and store them to a dictionary
+url = 'https://api.pubg.com/shards/steam/players?filter[playerNames]=' + urlNames
+
 headers = CaseInsensitiveDict()
 headers['accept'] = 'application/vnd.api+json'
-headers['Authorization'] = 'Bearer YOUR_API_KEY_HERE'
+headers['Authorization'] = 'Bearer ' + authorizationKey
+
+resp = requests.get(url, headers=headers)
+
+data = resp.json()
+
+urlIds = ''
+
+# Form the URL to get the player stats from PUBG API
+x = 0
+for i in range(numberOfPlayers):
+    if x < (numberOfPlayers - 1):
+        urlIds += data['data'][i]['id'] + '%2C'
+        x += 1
+    else:
+        urlIds += data['data'][i]['id']
+        x += 1
+
+# Download the stats as JSON and store them to a dictionary
+# Change platform shard, season, gamemode and if needed gamepad filter
+url = 'https://api.pubg.com/shards/steam/seasons/division.bro.official.pc-2018-19/gameMode/squad-fpp/players?filter[playerIds]=' + urlIds + '&filter[gamepad]=false'
 
 resp = requests.get(url, headers=headers)
 
@@ -29,29 +66,13 @@ resp = requests.get(url, headers=headers)
 # print(resp.status_code)
 # print(resp.json())
 
-# Store the JSON data as a new dictionary
 data = resp.json()
 
-# Get wins in the last 24 hours for the streamers
-wins_streamer1 = data['data'][0]['attributes']['gameModeStats']['squad-fpp']['dailyWins']
-wins_streamer2 = data['data'][1]['attributes']['gameModeStats']['squad-fpp']['dailyWins']
-wins_streamer3 = data['data'][2]['attributes']['gameModeStats']['squad-fpp']['dailyWins']
+# Create the player database
+players = {}
 
-# Define the players, names go here
-players = {
-    1 : { 'kd' : 0, 'dmg' : 0, 'winrate' : 0, 'kills' : 0, 'wins' : 0, 'totalDmg' : 0, 'assists' : 0, 'teamKills' : 0, 'score' : 0, 'revives' : 0, 'rounds' : 0, 'deaths' : 0, 'dbnos' : 0, 'top10s' : 0, 'timeSurvived' : 0, 'matchesPlayed' : 0, 'name' : 'streamer1' },
-    2 : { 'kd' : 0, 'dmg' : 0, 'winrate' : 0, 'kills' : 0, 'wins' : 0, 'totalDmg' : 0, 'assists' : 0, 'teamKills' : 0, 'score' : 0, 'revives' : 0, 'rounds' : 0, 'deaths' : 0, 'dbnos' : 0, 'top10s' : 0, 'timeSurvived' : 0, 'matchesPlayed' : 0, 'name' : 'streamer2' },
-    3 : { 'kd' : 0, 'dmg' : 0, 'winrate' : 0, 'kills' : 0, 'wins' : 0, 'totalDmg' : 0, 'assists' : 0, 'teamKills' : 0, 'score' : 0, 'revives' : 0, 'rounds' : 0, 'deaths' : 0, 'dbnos' : 0, 'top10s' : 0, 'timeSurvived' : 0, 'matchesPlayed' : 0, 'name' : 'streamer3' },
-    4 : { 'kd' : 0, 'dmg' : 0, 'winrate' : 0, 'kills' : 0, 'wins' : 0, 'totalDmg' : 0, 'assists' : 0, 'teamKills' : 0, 'score' : 0, 'revives' : 0, 'rounds' : 0, 'deaths' : 0, 'dbnos' : 0, 'top10s' : 0, 'timeSurvived' : 0, 'matchesPlayed' : 0, 'name' : 'player1' },
-    5 : { 'kd' : 0, 'dmg' : 0, 'winrate' : 0, 'kills' : 0, 'wins' : 0, 'totalDmg' : 0, 'assists' : 0, 'teamKills' : 0, 'score' : 0, 'revives' : 0, 'rounds' : 0, 'deaths' : 0, 'dbnos' : 0, 'top10s' : 0, 'timeSurvived' : 0, 'matchesPlayed' : 0, 'name' : 'player2' },
-    6 : { 'kd' : 0, 'dmg' : 0, 'winrate' : 0, 'kills' : 0, 'wins' : 0, 'totalDmg' : 0, 'assists' : 0, 'teamKills' : 0, 'score' : 0, 'revives' : 0, 'rounds' : 0, 'deaths' : 0, 'dbnos' : 0, 'top10s' : 0, 'timeSurvived' : 0, 'matchesPlayed' : 0, 'name' : 'player3' },
-    7 : { 'kd' : 0, 'dmg' : 0, 'winrate' : 0, 'kills' : 0, 'wins' : 0, 'totalDmg' : 0, 'assists' : 0, 'teamKills' : 0, 'score' : 0, 'revives' : 0, 'rounds' : 0, 'deaths' : 0, 'dbnos' : 0, 'top10s' : 0, 'timeSurvived' : 0, 'matchesPlayed' : 0, 'name' : 'player4' },
-    8 : { 'kd' : 0, 'dmg' : 0, 'winrate' : 0, 'kills' : 0, 'wins' : 0, 'totalDmg' : 0, 'assists' : 0, 'teamKills' : 0, 'score' : 0, 'revives' : 0, 'rounds' : 0, 'deaths' : 0, 'dbnos' : 0, 'top10s' : 0, 'timeSurvived' : 0, 'matchesPlayed' : 0, 'name' : 'player5' },
-    9 : { 'kd' : 0, 'dmg' : 0, 'winrate' : 0, 'kills' : 0, 'wins' : 0, 'totalDmg' : 0, 'assists' : 0, 'teamKills' : 0, 'score' : 0, 'revives' : 0, 'rounds' : 0, 'deaths' : 0, 'dbnos' : 0, 'top10s' : 0, 'timeSurvived' : 0, 'matchesPlayed' : 0, 'name' : 'player6' },
-    10 : { 'kd' : 0, 'dmg' : 0, 'winrate' : 0, 'kills' : 0, 'wins' : 0, 'totalDmg' : 0, 'assists' : 0, 'teamKills' : 0, 'score' : 0, 'revives' : 0, 'rounds' : 0, 'deaths' : 0, 'dbnos' : 0, 'top10s' : 0, 'timeSurvived' : 0, 'matchesPlayed' : 0, 'name' : 'player7' }
-}
-
-numberOfPlayers = len(players.keys())
+for i in range(numberOfPlayers):
+    players[(i+1)] = { 'kd' : 0, 'dmg' : 0, 'winrate' : 0, 'kills' : 0, 'wins' : 0, 'totalDmg' : 0, 'assists' : 0, 'teamKills' : 0, 'score' : 0, 'revives' : 0, 'rounds' : 0, 'deaths' : 0, 'dbnos' : 0, 'top10s' : 0, 'timeSurvived' : 0, 'matchesPlayed' : 0, 'winsToday' : 0, 'name' : playerNames[i], 'isStreamer' : False, 'lastMatchID' : '' }
 
 # Populate PLAYERS dictionary with the season data
 for i in range(0, numberOfPlayers):
@@ -99,6 +120,10 @@ for i in range(0, numberOfPlayers):
     i += 1
 
 for i in range(0, numberOfPlayers):
+    players[i+1]['winsToday'] = data['data'][i]['attributes']['gameModeStats']['squad-fpp']['dailyWins']
+    i += 1
+
+for i in range(0, numberOfPlayers):
     if players[i+1]['rounds'] == 0:
         players[i+1]['timeSurvived'] = 0
     else:
@@ -133,6 +158,11 @@ for i in range(0, numberOfPlayers):
         players[i+1]['score'] = round((float(players[i+1]['kills'] / 10) + float(players[i+1]['assists'] / 40) + float(players[i+1]['dbnos'] / 20) + float(players[i+1]['top10s'] / 20) + float(players[i+1]['totalDmg'] / 1000) + float(players[i+1]['revives'] / 10) + float(players[i+1]['wins'] * 2) - float(players[i+1]['teamKills'] / 2)) * 100 / players[i+1]['rounds'], 1)
     i += 1
 
+# Add streamer tags - this is a bit of a crude way of doing it as you have to do it by hand, I'll come up with a better way someday
+players[1]['isStreamer'] = True
+players[2]['isStreamer'] = True
+players[3]['isStreamer'] = True
+
 # Sort players by KD
 playersKd = sorted(players.items(), key = lambda x: x[1]['kd'], reverse=True)
 
@@ -143,7 +173,7 @@ for i in playersKd:
     statsOutput += str(x+1) +': ' + playersKd[x][1]['name'] + ' ' + str(playersKd[x][1]['kd']) + ' kd, ' + str(playersKd[x][1]['dmg']) + ' dmg, ' + str(playersKd[x][1]['winrate']) + ' winrate. '
     x += 1
 
-with open('stats.txt', 'w') as f:
+with open(workingDirectory + 'stats.txt', 'w') as f:
     print(statsOutput, file=f)
 
 # Print KD to KD variable and print them to a file
@@ -156,7 +186,7 @@ for i in playersKd:
     else:
         x += 1
 
-with open('kd.txt', 'w') as f:
+with open(workingDirectory + 'kd.txt', 'w') as f:
     print(kdOutput, file=f)
 
 # Sort players by damage
@@ -172,7 +202,7 @@ for i in playersKd:
     else:
         x += 1
 
-with open('damage.txt', 'w') as f:
+with open(workingDirectory + 'damage.txt', 'w') as f:
     print(dmgOutput, file=f)
 
 # Sort players by winning rate
@@ -188,7 +218,7 @@ for i in playersKd:
     else:
         x += 1
 
-with open('winrate.txt', 'w') as f:
+with open(workingDirectory + 'winrate.txt', 'w') as f:
     print(winrateOutput, file=f)
 
 # Sort players by points
@@ -204,7 +234,7 @@ for i in playersKd:
     else:
         x += 1
 
-with open('score.txt', 'w') as f:
+with open(workingDirectory + 'pisteet.txt', 'w') as f:
     print(scoreOutput, file=f)
 
 # Sort players by time survived, reversed
@@ -222,10 +252,10 @@ for i in playersKd:
     else:
         x += 1
 
-with open('survived.txt', 'w') as f:
+with open(workingDirectory + 'survived.txt', 'w') as f:
     print(survivedOutput, file=f)
 
-# Sort players by matchwes played
+# Sort players by matches played
 playersMatchesPlayed = sorted(players.items(), key = lambda x: x[1]['matchesPlayed'], reverse=True)
 
 # Print matches played to MATCHES variable and print them to a file
@@ -239,40 +269,39 @@ for i in playersMatchesPlayed:
         matchesPlayedOutput += playersMatchesPlayed[x][1]['name'] + ' ' + str(playersMatchesPlayed[x][1]['matchesPlayed'])
         x += 1
 
-with open('matches.txt', 'w') as f:
+with open(workingDirectory + 'matches.txt', 'w') as f:
     print(matchesPlayedOutput, file=f)
 
+# THIS MIGHT NOT WORK
+# NO IT ACTUALLY DOES LOL
 
-# Print today's streamer chicken dinners to a file
-wins_streamer1_output = ''
-if wins_streamer1 == 0:
-    wins_streamer1_output = 'No chicken dinners tonight.'
-if wins_streamer1 == 1:
-    wins_streamer1_output = 'One chicken dinner tonight!'
-if wins_streamer1 > 1:
-    wins_streamer1_output = str(wins_streamer1) + ' chicken dinners tonight!'
+# Print today's streamer chicken dinners to individual files (in Finnish, translation is up to you)
+for i in range(0, numberOfPlayers):
+    if players[i+1]['isStreamer'] == True:
+        output = ''
+        players[i+1]['lastMatchID'] = data['data'][i]['relationships']['matchesSquadFPP']['data'][0]['id']
 
-with open('streamer1wins.txt', 'w') as f:
-    print(wins_streamer1_output, file=f)
+        url = 'https://api.pubg.com/shards/steam/matches/' + players[i+1]['lastMatchID']
 
-wins_streamer2_output = ''
-if wins_streamer2 == 0:
-    wins_streamer2_output = 'No chicken dinners tonight.'
-if wins_streamer2 == 1:
-    wins_streamer2_output = 'One chicken dinner tonight!'
-if wins_streamer2 > 1:
-    wins_streamer2_output = str(wins_streamer2) + ' chicken dinners tonight!'
+        resp = requests.get(url, headers=headers)
 
-with open('streamer2wins.txt', 'w') as f:
-    print(wins_streamer2_output, file=f)
+        data2 = resp.json()
 
-wins_streamer3_output = ''
-if wins_streamer3 == 0:
-    wins_streamer3_output = 'No chicken dinners tonight.'
-if wins_streamer3 == 1:
-    wins_streamer3_output = 'One chicken dinner tonight!'
-if wins_streamer3 > 1:
-    wins_streamer3_output = str(wins_streamer3) + ' chicken dinners tonight!'
+        lastMatchDate = data2['data']['attributes']['createdAt']
+        lastMatchToDate = lastMatchDate[0:10] + ' ' + lastMatchDate[11:16]
+        dt1 = datetime.strptime(lastMatchToDate, "%Y-%m-%d %H:%M")
+        timeSinceLastMatch = datetime.now() - dt1
 
-with open('streamer3wins.txt', 'w') as f:
-    print(wins_streamer3_output, file=f)
+        # The 4 is compensating the time difference to PUBG API server, adjust as needed
+        if timeSinceLastMatch.total_seconds() / 3600 - 4 < 16:
+            wins = players[i+1]['winsToday']
+            if wins == 0:
+                output = 'Ei kanaa tänään :('
+            if wins == 1:
+                output = "Yksi kana tänään!"
+            else:
+                output = str(wins) + ' kanaa tänään!' 
+        else:
+            output = 'Ei pelejä, ei kanaa :('
+        with open(workingDirectory + players[i+1]['name'] + 'wins.txt', 'w') as f:
+            print(output, file=f)
